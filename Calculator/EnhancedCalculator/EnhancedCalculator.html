@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Web Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .calculator {
+            width: 450px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            padding: 20px;
+        }
+        #display {
+            width: 100%;
+            height: 50px;
+            font-size: 20px;
+            text-align: right;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            background-color: #e0e0e0;
+            border: 1px solid #ccc;
+            border-bottom: none;
+        }
+        .tab.active {
+            background-color: #ffffff;
+            font-weight: bold;
+        }
+        .panel {
+            display: none;
+        }
+        .panel.active {
+            display: grid;
+        }
+        #basicPanel {
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+        }
+        #scientificPanel {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+        }
+        #memoryPanel {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 5px;
+        }
+        button {
+            padding: 15px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #f9f9f9;
+        }
+        button:hover {
+            background-color: #e0e0e0;
+        }
+        #history {
+            width: 100%;
+            height: 120px;
+            margin-top: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            resize: none;
+            background-color: #f9f9f9;
+        }
+        #history::placeholder {
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <input type="text" id="display" value="0" readonly>
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('basic')">Basic</div>
+            <div class="tab" onclick="switchTab('scientific')">Scientific</div>
+            <div class="tab" onclick="switchTab('memory')">Memory</div>
+        </div>
+        <div id="basicPanel" class="panel active">
+            <button onclick="appendToInput('7')">7</button>
+            <button onclick="appendToInput('8')">8</button>
+            <button onclick="appendToInput('9')">9</button>
+            <button onclick="setOperator('/')">/</button>
+            <button onclick="appendToInput('4')">4</button>
+            <button onclick="appendToInput('5')">5</button>
+            <button onclick="appendToInput('6')">6</button>
+            <button onclick="setOperator('*')">*</button>
+            <button onclick="appendToInput('1')">1</button>
+            <button onclick="appendToInput('2')">2</button>
+            <button onclick="appendToInput('3')">3</button>
+            <button onclick="setOperator('-')">-</button>
+            <button onclick="appendToInput('0')">0</button>
+            <button onclick="appendToInput('.')">.</button>
+            <button onclick="calculate()">=</button>
+            <button onclick="setOperator('+')">+</button>
+            <button onclick="clearEntry()">CE</button>
+            <button onclick="clearAll()">C</button>
+            <button onclick="backspace()">&larr;</button>
+            <button onclick="negate()">±</button>
+        </div>
+        <div id="scientificPanel" class="panel">
+            <button onclick="applyFunction('sin')">sin</button>
+            <button onclick="applyFunction('cos')">cos</button>
+            <button onclick="applyFunction('tan')">tan</button>
+            <button onclick="applyFunction('ln')">ln</button>
+            <button onclick="applyFunction('log')">log</button>
+            <button onclick="applyFunction('exp')">exp</button>
+            <button onclick="applyFunction('sqrt')">√</button>
+            <button onclick="applyFunction('pow')">x²</button>
+            <button onclick="applyFunction('mod')">%</button>
+            <button onclick="applyFunction('factorial')">!</button>
+            <button onclick="appendToInput(Math.PI)">π</button>
+            <button onclick="appendToInput(Math.E)">e</button>
+            <button onclick="toggleMode('deg')">Deg</button>
+            <button onclick="toggleMode('rad')">Rad</button>
+            <button onclick="applyFunction('recip')">1/x</button>
+        </div>
+        <div id="memoryPanel" class="panel">
+            <button onclick="memoryAdd()">M+</button>
+            <button onclick="memorySubtract()">M-</button>
+            <button onclick="memoryRecall()">MR</button>
+            <button onclick="memoryClear()">MC</button>
+            <button onclick="memoryStore()">MS</button>
+            <button onclick="memoryDivide()">M/</button>
+        </div>
+        <textarea id="history" readonly placeholder="Calculation History"></textarea>
+    </div>
+
+    <script>
+        let currentInput = '';
+        let operator = '';
+        let firstNumber = 0;
+        let isNewInput = true;
+        let memory = 0;
+        let isDegrees = true;
+        let history = JSON.parse(localStorage.getItem('calcHistory')) || [];
+
+        function appendToInput(value) {
+            if (isNewInput) {
+                currentInput = '';
+                isNewInput = false;
+            }
+            currentInput += value;
+            document.getElementById('display').value = currentInput || '0';
+        }
+
+        function setOperator(op) {
+            if (!currentInput) return;
+            firstNumber = parseFloat(currentInput);
+            operator = op;
+            isNewInput = true;
+        }
+
+        function calculate() {
+            if (!operator || !currentInput) return;
+            const secondNumber = parseFloat(currentInput);
+            let result;
+            switch (operator) {
+                case '+': result = firstNumber + secondNumber; break;
+                case '-': result = firstNumber - secondNumber; break;
+                case '*': result = firstNumber * secondNumber; break;
+                case '/':
+                    if (secondNumber === 0) {
+                        document.getElementById('display').value = 'Error: Div/0';
+                        return;
+                    }
+                    result = firstNumber / secondNumber;
+                    break;
+            }
+            result = parseFloat(result.toFixed(8));
+            document.getElementById('display').value = result;
+            addToHistory(`${firstNumber} ${operator} ${secondNumber} = ${result}`);
+            currentInput = result.toString();
+            operator = '';
+            firstNumber = 0;
+            isNewInput = true;
+        }
+
+        function applyFunction(func) {
+            if (!currentInput) return;
+            let num = parseFloat(currentInput);
+            let result;
+            let radians = isDegrees ? num * Math.PI / 180 : num;
+            switch (func) {
+                case 'sin': result = Math.sin(radians); break;
+                case 'cos': result = Math.cos(radians); break;
+                case 'tan':
+                    if (Math.abs(Math.cos(radians)) < 1e-10) {
+                        document.getElementById('display').value = 'Error: Invalid tan';
+                        return;
+                    }
+                    result = Math.tan(radians);
+                    break;
+                case 'ln':
+                    if (num <= 0) {
+                        document.getElementById('display').value = 'Error: Invalid ln';
+                        return;
+                    }
+                    result = Math.log(num);
+                    break;
+                case 'log':
+                    if (num <= 0) {
+                        document.getElementById('display').value = 'Error: Invalid log';
+                        return;
+                    }
+                    result = Math.log10(num);
+                    break;
+                case 'exp': result = Math.exp(num); break;
+                case 'sqrt':
+                    if (num < 0) {
+                        document.getElementById('display').value = 'Error: Negative sqrt';
+                        return;
+                    }
+                    result = Math.sqrt(num);
+                    break;
+                case 'pow': result = num * num; break;
+                case 'mod': result = num / 100; break;
+                case 'factorial':
+                    if (num < 0 || !Number.isInteger(num)) {
+                        document.getElementById('display').value = 'Error: Invalid factorial';
+                        return;
+                    }
+                    result = factorial(num);
+                    break;
+                case 'recip':
+                    if (num === 0) {
+                        document.getElementById('display').value = 'Error: Div/0';
+                        return;
+                    }
+                    result = 1 / num;
+                    break;
+            }
+            result = parseFloat(result.toFixed(8));
+            document.getElementById('display').value = result;
+            addToHistory(`${func}(${num}) = ${result}`);
+            currentInput = result.toString();
+            isNewInput = true;
+        }
+
+        function factorial(n) {
+            if (n <= 1) return 1;
+            let fact = 1;
+            for (let i = 2; i <= n; i++) fact *= i;
+            return fact;
+        }
+
+        function clearEntry() {
+            currentInput = '';
+            isNewInput = true;
+            document.getElementById('display').value = '0';
+        }
+
+        function clearAll() {
+            currentInput = '';
+            operator = '';
+            firstNumber = 0;
+            isNewInput = true;
+            document.getElementById('display').value = '0';
+        }
+
+        function backspace() {
+            if (!currentInput || isNewInput) return;
+            currentInput = currentInput.slice(0, -1);
+            document.getElementById('display').value = currentInput || '0';
+        }
+
+        function negate() {
+            if (!currentInput) return;
+            currentInput = (-parseFloat(currentInput)).toString();
+            document.getElementById('display').value = currentInput;
+        }
+
+        function memoryAdd() {
+            if (!currentInput) return;
+            memory += parseFloat(currentInput);
+            addToHistory(`M+ ${currentInput}`);
+        }
+
+        function memorySubtract() {
+            if (!currentInput) return;
+            memory -= parseFloat(currentInput);
+            addToHistory(`M- ${currentInput}`);
+        }
+
+        function memoryRecall() {
+            currentInput = memory.toString();
+            document.getElementById('display').value = parseFloat(memory.toFixed(8));
+            isNewInput = false;
+            addToHistory(`MR = ${memory}`);
+        }
+
+        function memoryClear() {
+            memory = 0;
+            addToHistory('MC (memory cleared)');
+        }
+
+        function memoryStore() {
+            if (!currentInput) return;
+            memory = parseFloat(currentInput);
+            addToHistory(`MS ${currentInput}`);
+        }
+
+        function memoryDivide() {
+            if (!currentInput || currentInput === '0') {
+                document.getElementById('display').value = 'Error: Div/0';
+                return;
+            }
+            let num = parseFloat(currentInput);
+            let result = memory / num;
+            result = parseFloat(result.toFixed(8));
+            document.getElementById('display').value = result;
+            addToHistory(`M/ ${num} = ${result}`);
+            currentInput = result.toString();
+            isNewInput = true;
+        }
+
+        function toggleMode(mode) {
+            isDegrees = mode === 'deg';
+            addToHistory(`Mode: ${isDegrees ? 'Degrees' : 'Radians'}`);
+        }
+
+        function addToHistory(entry) {
+            history.push(entry);
+            if (history.length > 10) history.shift(); // Keep last 10
+            localStorage.setItem('calcHistory', JSON.stringify(history));
+            updateHistory();
+        }
+
+        function updateHistory() {
+            document.getElementById('history').value = history.slice().reverse().join('\n');
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+            document.getElementById(`${tab}Panel`).classList.add('active');
+        }
+
+        // Load history on startup
+        window.onload = updateHistory;
+    </script>
+</body>
+</html>
